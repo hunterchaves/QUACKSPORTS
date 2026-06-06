@@ -38,14 +38,12 @@ import com.example.quacksports.ui.theme.QUACKSPORTSTheme
 import com.example.quacksports.ui.viewmodel.AuthViewModel
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.google.firebase.FirebaseApp
-import com.example.quacksports.util.FirebaseRealtimeDatabaseManager
 
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         FirebaseApp.initializeApp(this)
-        FirebaseRealtimeDatabaseManager.initialize(FirebaseApp.getInstance())
         enableEdgeToEdge()
         setContent {
             QUACKSPORTSTheme {
