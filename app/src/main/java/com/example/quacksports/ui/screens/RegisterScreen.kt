@@ -9,11 +9,13 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
+import com.example.quacksports.R
 import com.example.quacksports.ui.viewmodel.AuthViewModel
 import com.google.android.gms.auth.api.signin.GoogleSignIn
 import com.google.android.gms.auth.api.signin.GoogleSignInOptions
@@ -31,7 +33,13 @@ fun RegisterScreen(
     viewModel: AuthViewModel = viewModel()
 ) {
     val context = LocalContext.current
-    val callbackManager = remember { CallbackManager.Factory.create() }
+    val facebookAppId = stringResource(R.string.facebook_app_id)
+    val isFacebookConfigured = remember(facebookAppId) {
+        facebookAppId.isNotBlank() && !facebookAppId.contains("coloque", ignoreCase = true)
+    }
+    val callbackManager = remember(isFacebookConfigured) {
+        if (isFacebookConfigured) CallbackManager.Factory.create() else null
+    }
 
     // Google Sign-In Launcher
     val googleSignInLauncher = rememberLauncherForActivityResult(
@@ -49,20 +57,22 @@ fun RegisterScreen(
     }
 
     // Facebook Login Callback
-    DisposableEffect(Unit) {
-        LoginManager.getInstance().registerCallback(callbackManager, object : FacebookCallback<LoginResult> {
-            override fun onSuccess(result: LoginResult) {
-                viewModel.signInWithFacebook(result.accessToken.token, onRegisterSuccess)
+    if (callbackManager != null) {
+        DisposableEffect(callbackManager) {
+            LoginManager.getInstance().registerCallback(callbackManager, object : FacebookCallback<LoginResult> {
+                override fun onSuccess(result: LoginResult) {
+                    viewModel.signInWithFacebook(result.accessToken.token, onRegisterSuccess)
+                }
+                override fun onCancel() {
+                    viewModel.errorMessage = "Login cancelado"
+                }
+                override fun onError(error: FacebookException) {
+                    viewModel.errorMessage = "Erro Facebook: ${error.message}"
+                }
+            })
+            onDispose {
+                LoginManager.getInstance().unregisterCallback(callbackManager)
             }
-            override fun onCancel() {
-                viewModel.errorMessage = "Login cancelado"
-            }
-            override fun onError(error: FacebookException) {
-                viewModel.errorMessage = "Erro Facebook: ${error.message}"
-            }
-        })
-        onDispose {
-            LoginManager.getInstance().unregisterCallback(callbackManager)
         }
     }
 
@@ -163,17 +173,18 @@ fun RegisterScreen(
             Text("Cadastrar com Google")
         }
 
-        Spacer(modifier = Modifier.height(8.dp))
+        if (isFacebookConfigured) {
+            Spacer(modifier = Modifier.height(8.dp))
 
-        // Facebook Button
-        Button(
-            onClick = {
-                LoginManager.getInstance().logInWithReadPermissions(context as androidx.activity.ComponentActivity, listOf("email", "public_profile"))
-            },
-            modifier = Modifier.fillMaxWidth(),
-            colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF1877F2))
-        ) {
-            Text("Cadastrar com Facebook")
+            Button(
+                onClick = {
+                    LoginManager.getInstance().logInWithReadPermissions(context as androidx.activity.ComponentActivity, listOf("email", "public_profile"))
+                },
+                modifier = Modifier.fillMaxWidth(),
+                colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF1877F2))
+            ) {
+                Text("Cadastrar com Facebook")
+            }
         }
         
         Spacer(modifier = Modifier.height(16.dp))

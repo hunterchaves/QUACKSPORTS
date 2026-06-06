@@ -18,7 +18,7 @@ class UserRepository(private val db: FirebaseFirestore = FirestoreProvider.db) {
 
     fun addresses(uid: String): Flow<List<Address>> = callbackFlow {
         val reg = userDoc(uid).collection("addresses").addSnapshotListener { snap, err ->
-            if (err != null) { close(err); return@addSnapshotListener }
+            if (err != null) { trySend(emptyList()); close(); return@addSnapshotListener }
             trySend(snap?.documents?.mapNotNull {
                 it.toObject(Address::class.java)?.copy(id = it.id)
             } ?: emptyList())
@@ -37,7 +37,7 @@ class UserRepository(private val db: FirebaseFirestore = FirestoreProvider.db) {
 
     fun cards(uid: String): Flow<List<Card>> = callbackFlow {
         val reg = userDoc(uid).collection("cards").addSnapshotListener { snap, err ->
-            if (err != null) { close(err); return@addSnapshotListener }
+            if (err != null) { trySend(emptyList()); close(); return@addSnapshotListener }
             trySend(snap?.documents?.mapNotNull {
                 it.toObject(Card::class.java)?.copy(id = it.id)
             } ?: emptyList())

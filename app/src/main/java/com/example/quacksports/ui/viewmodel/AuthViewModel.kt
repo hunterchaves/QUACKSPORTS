@@ -28,10 +28,30 @@ class AuthViewModel(application: Application) : AndroidViewModel(application) {
     var isLoading by mutableStateOf(false)
     var errorMessage by mutableStateOf<String?>(null)
     var currentUserData by mutableStateOf<User?>(null)
+    var hasCheckedSession by mutableStateOf(false)
+        private set
 
     val role: UserRole get() = UserRole.from(currentUserData?.role)
 
-    init { auth.currentUser?.uid?.let { uid -> viewModelScope.launch { currentUserData = repo.fetchUser(uid) } } }
+    init { loadCurrentUser() }
+
+    private fun loadCurrentUser() {
+        if (repo.currentUid() == null) {
+            currentUserData = null
+            hasCheckedSession = true
+            return
+        }
+
+        viewModelScope.launch {
+            try {
+                currentUserData = repo.fetchCurrentUser()
+            } catch (e: Exception) {
+                errorMessage = "Erro ao carregar sessão: ${e.message}"
+            } finally {
+                hasCheckedSession = true
+            }
+        }
+    }
 
     fun isLoggedIn(): Boolean = repo.isLoggedIn()
 
@@ -39,7 +59,7 @@ class AuthViewModel(application: Application) : AndroidViewModel(application) {
         if (loginEmail.isBlank() || loginPassword.isBlank()) { errorMessage = "Preencha todos os campos"; return }
         isLoading = true; errorMessage = null
         viewModelScope.launch {
-            try { currentUserData = repo.login(loginEmail, loginPassword); onSuccess() }
+            try { currentUserData = repo.login(loginEmail, loginPassword); hasCheckedSession = true; onSuccess() }
             catch (e: Exception) { errorMessage = "Erro ao fazer login: ${e.message}" }
             finally { isLoading = false }
         }
@@ -51,7 +71,7 @@ class AuthViewModel(application: Application) : AndroidViewModel(application) {
         }
         isLoading = true; errorMessage = null
         viewModelScope.launch {
-            try { currentUserData = repo.register(registerFirstName, registerLastName, registerEmail, registerPassword); onSuccess() }
+            try { currentUserData = repo.register(registerFirstName, registerLastName, registerEmail, registerPassword); hasCheckedSession = true; onSuccess() }
             catch (e: Exception) { errorMessage = "Erro ao cadastrar: ${e.message}" }
             finally { isLoading = false }
         }
@@ -69,9 +89,9 @@ class AuthViewModel(application: Application) : AndroidViewModel(application) {
             if (task.isSuccessful) {
                 val fu = task.result?.user
                 if (fu != null) viewModelScope.launch {
-                    try { currentUserData = repo.signInWithCredentialUser(fu.uid, fu.displayName ?: "", fu.email ?: "") }
+                    try { currentUserData = repo.signInWithCredentialUser(fu.uid, fu.displayName ?: "", fu.email ?: ""); hasCheckedSession = true }
                     finally { isLoading = false; onSuccess() }
-                } else { isLoading = false; onSuccess() }
+                } else { hasCheckedSession = true; isLoading = false; onSuccess() }
             } else { isLoading = false; errorMessage = "Erro: ${task.exception?.message}" }
         }
     }
@@ -85,7 +105,7 @@ class AuthViewModel(application: Application) : AndroidViewModel(application) {
         }
     }
 
-    fun refresh() { repo.currentUid()?.let { uid -> viewModelScope.launch { currentUserData = repo.fetchUser(uid) } } }
+    fun refresh() { viewModelScope.launch { currentUserData = repo.fetchCurrentUser() } }
 
-    fun logout() { repo.logout(); currentUserData = null }
+    fun logout() { repo.logout(); currentUserData = null; hasCheckedSession = true }
 }

@@ -112,7 +112,7 @@ fun ProfileScreen(
         Spacer(Modifier.weight(1f))
 
         Button(
-            onClick = { authViewModel.logout(); onLogout() },
+            onClick = onLogout,
             modifier = Modifier.fillMaxWidth().padding(bottom = 16.dp),
             colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFE51D53))
         ) {

@@ -4,7 +4,10 @@ import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.Send
 import androidx.compose.material.icons.filled.AccountCircle
@@ -19,6 +22,7 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
@@ -132,22 +136,40 @@ fun MainApp() {
             }
         }
     ) { innerPadding ->
-        val startDestination = if (authViewModel.isLoggedIn()) Screen.Explore.route else "login"
         NavHost(
             navController = navController,
-            startDestination = startDestination,
+            startDestination = "auth_gate",
             modifier = Modifier.padding(innerPadding)
         ) {
+            composable("auth_gate") {
+                LaunchedEffect(authViewModel.hasCheckedSession, authViewModel.currentUserData?.role) {
+                    if (authViewModel.hasCheckedSession) {
+                        if (authViewModel.isLoggedIn()) {
+                            routeByRole(navController, authViewModel.role)
+                        } else {
+                            navController.navigate("login") {
+                                popUpTo("auth_gate") { inclusive = true }
+                                launchSingleTop = true
+                            }
+                        }
+                    }
+                }
+                Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                    CircularProgressIndicator(color = Color(0xFFE51D53))
+                }
+            }
             composable("login") {
                 LoginScreen(
                     onLoginSuccess = { routeByRole(navController, authViewModel.role) },
-                    onNavigateToRegister = { navController.navigate("register") }
+                    onNavigateToRegister = { navController.navigate("register") },
+                    viewModel = authViewModel
                 )
             }
             composable("register") {
                 RegisterScreen(
                     onRegisterSuccess = { routeByRole(navController, authViewModel.role) },
-                    onBack = { navController.popBackStack() }
+                    onBack = { navController.popBackStack() },
+                    viewModel = authViewModel
                 )
             }
             composable(Screen.Explore.route) {
@@ -166,7 +188,10 @@ fun MainApp() {
             composable(Screen.Trips.route) { ReservationsScreen(onBack = { navController.popBackStack() }) }
             composable(Screen.Profile.route) {
                 ProfileScreen(
-                    onLogout = { navController.navigate("login") { popUpTo(0) { inclusive = true } } },
+                    onLogout = {
+                        authViewModel.logout()
+                        navController.navigate("login") { popUpTo(0) { inclusive = true } }
+                    },
                     onNavigateToReservations = { navController.navigate(Screen.Trips.route) },
                     onNavigateToAddresses = { navController.navigate("addresses") },
                     onNavigateToCards = { navController.navigate("cards") },
@@ -241,7 +266,15 @@ fun MainApp() {
                 val cid = authViewModel.currentUserData?.companyId ?: ""
                 CompanyReservationsScreen(companyId = cid, onBack = { navController.popBackStack() })
             }
-            composable("admin_dashboard") { AdminDashboardScreen(onBack = { navController.popBackStack() }) }
+            composable("admin_dashboard") {
+                AdminDashboardScreen(
+                    onBack = { navController.popBackStack() },
+                    onLogout = {
+                        authViewModel.logout()
+                        navController.navigate("login") { popUpTo(0) { inclusive = true } }
+                    }
+                )
+            }
         }
     }
 }

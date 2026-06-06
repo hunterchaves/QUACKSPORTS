@@ -35,7 +35,7 @@ class ReservationRepository(private val db: FirebaseFirestore = FirestoreProvide
 
     private fun listenQuery(query: Query): Flow<List<Reservation>> = callbackFlow {
         val reg = query.addSnapshotListener { snap, err ->
-            if (err != null) { close(err); return@addSnapshotListener }
+            if (err != null) { trySend(emptyList()); close(); return@addSnapshotListener }
             trySend(snap?.documents?.mapNotNull {
                 it.toObject(Reservation::class.java)?.copy(id = it.id)
             } ?: emptyList())

@@ -14,7 +14,7 @@ class VenueRepository(private val db: FirebaseFirestore = FirestoreProvider.db) 
 
     fun allVenues(): Flow<List<Venue>> = callbackFlow {
         val reg = venues().addSnapshotListener { snap, err ->
-            if (err != null) { close(err); return@addSnapshotListener }
+            if (err != null) { trySend(emptyList()); close(); return@addSnapshotListener }
             trySend(snap?.documents?.mapNotNull {
                 it.toObject(Venue::class.java)?.copy(id = it.id)
             } ?: emptyList())
@@ -24,7 +24,7 @@ class VenueRepository(private val db: FirebaseFirestore = FirestoreProvider.db) 
 
     fun venuesByCompany(companyId: String): Flow<List<Venue>> = callbackFlow {
         val reg = venues().whereEqualTo("companyId", companyId).addSnapshotListener { snap, err ->
-            if (err != null) { close(err); return@addSnapshotListener }
+            if (err != null) { trySend(emptyList()); close(); return@addSnapshotListener }
             trySend(snap?.documents?.mapNotNull {
                 it.toObject(Venue::class.java)?.copy(id = it.id)
             } ?: emptyList())
@@ -37,7 +37,7 @@ class VenueRepository(private val db: FirebaseFirestore = FirestoreProvider.db) 
 
     fun courts(venueId: String): Flow<List<Court>> = callbackFlow {
         val reg = venues().document(venueId).collection("courts").addSnapshotListener { snap, err ->
-            if (err != null) { close(err); return@addSnapshotListener }
+            if (err != null) { trySend(emptyList()); close(); return@addSnapshotListener }
             trySend(snap?.documents?.mapNotNull {
                 it.toObject(Court::class.java)?.copy(id = it.id, venueId = venueId)
             } ?: emptyList())

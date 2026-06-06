@@ -18,14 +18,25 @@ class VenueViewModel(private val repository: VenueRepository = VenueRepository()
     private val _venues = MutableStateFlow<List<Venue>>(emptyList())
     val venues: StateFlow<List<Venue>> = _venues
 
+    private val _isLoading = MutableStateFlow(true)
+    val isLoading: StateFlow<Boolean> = _isLoading
+
     private val _errorMessage = MutableStateFlow<String?>(null)
     val errorMessage: StateFlow<String?> = _errorMessage
 
     init {
         viewModelScope.launch {
             repository.allVenues()
-                .catch { _errorMessage.value = "Erro ao carregar quadras: ${it.message}" }
-                .collect { _allVenues.value = it; applyFilter(); _errorMessage.value = null }
+                .catch {
+                    _isLoading.value = false
+                    _errorMessage.value = "Erro ao carregar quadras: ${it.message}"
+                }
+                .collect {
+                    _allVenues.value = it
+                    applyFilter()
+                    _errorMessage.value = null
+                    _isLoading.value = false
+                }
         }
     }
 

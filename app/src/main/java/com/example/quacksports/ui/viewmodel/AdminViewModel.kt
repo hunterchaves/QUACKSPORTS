@@ -1,8 +1,10 @@
 package com.example.quacksports.ui.viewmodel
 
+import android.content.Context
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.quacksports.data.logic.Revenue
+import com.example.quacksports.data.repository.AuthRepository
 import com.example.quacksports.data.repository.CompanyRepository
 import com.example.quacksports.data.repository.PaymentRepository
 import com.example.quacksports.data.repository.ReservationRepository
@@ -15,6 +17,7 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.launch
 
 class AdminViewModel(
+    private val authRepo: AuthRepository = AuthRepository(),
     private val companyRepo: CompanyRepository = CompanyRepository(),
     private val reservationRepo: ReservationRepository = ReservationRepository(),
     private val venueRepo: VenueRepository = VenueRepository(),
@@ -32,6 +35,10 @@ class AdminViewModel(
     val totalRevenue: StateFlow<Double> = _totalRevenue
     private val _revenuePerCompany = MutableStateFlow<Map<String, Double>>(emptyMap())
     val revenuePerCompany: StateFlow<Map<String, Double>> = _revenuePerCompany
+    private val _isCreatingCompany = MutableStateFlow(false)
+    val isCreatingCompany: StateFlow<Boolean> = _isCreatingCompany
+    private val _companyMessage = MutableStateFlow<String?>(null)
+    val companyMessage: StateFlow<String?> = _companyMessage
 
     init {
         viewModelScope.launch { companyRepo.all().collect { _companies.value = it } }
@@ -49,5 +56,46 @@ class AdminViewModel(
         val p = paymentRepo.all()
         _payments.value = p.sortedByDescending { it.createdAt }
         _totalRevenue.value = Revenue.total(p)
+    }
+
+    fun createCompany(context: Context, name: String, email: String, logoUrl: String, description: String) =
+        viewModelScope.launch {
+            if (_isCreatingCompany.value) return@launch
+            val cleanName = name.trim()
+            val cleanEmail = email.trim().lowercase()
+            if (cleanName.isBlank() || cleanEmail.isBlank()) {
+                _companyMessage.value = "Informe nome e email da empresa"
+                return@launch
+            }
+
+            _isCreatingCompany.value = true
+            _companyMessage.value = null
+            try {
+                val ownerUid = authRepo.createCompanyOwnerAccount(
+                    context.applicationContext,
+                    cleanEmail,
+                    AuthRepository.COMPANY_DEFAULT_PASSWORD
+                )
+                val companyId = companyRepo.upsert(
+                    Company(
+                        name = cleanName,
+                        ownerUid = ownerUid,
+                        email = cleanEmail,
+                        logoUrl = logoUrl.trim(),
+                        description = description.trim(),
+                        createdAt = System.currentTimeMillis()
+                    )
+                )
+                authRepo.upsertCompanyOwnerUser(ownerUid, cleanName, cleanEmail, companyId)
+                _companyMessage.value = "Empresa cadastrada. Login: $cleanEmail / senha 123456"
+            } catch (e: Exception) {
+                _companyMessage.value = "Erro ao cadastrar empresa: ${e.message}"
+            } finally {
+                _isCreatingCompany.value = false
+            }
+        }
+
+    fun clearCompanyMessage() {
+        _companyMessage.value = null
     }
 }

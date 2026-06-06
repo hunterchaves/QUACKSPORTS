@@ -41,8 +41,9 @@ service cloud.firestore {
 
       // Create your own doc. The ADMIN role can only be self-assigned by an
       // allowlisted email; everyone else must create as USER/COMPANY.
-      allow create: if uid() == userId
-        && (request.resource.data.role != 'ADMIN' || isAdminEmail());
+      allow create: if (uid() == userId
+        && (request.resource.data.role != 'ADMIN' || isAdminEmail()))
+        || isAdmin() || isAdminEmail();
 
       // Update your own doc (no self-promotion to ADMIN unless allowlisted),
       // or any admin may edit.

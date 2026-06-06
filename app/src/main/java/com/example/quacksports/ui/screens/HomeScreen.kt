@@ -36,6 +36,7 @@ fun HomeScreen(
     viewModel: VenueViewModel = viewModel()
 ) {
     val venues by viewModel.venues.collectAsState()
+    val isLoading by viewModel.isLoading.collectAsState()
     val errorMessage by viewModel.errorMessage.collectAsState()
     val selectedSport by viewModel.selectedSport.collectAsState()
 
@@ -48,9 +49,17 @@ fun HomeScreen(
                 Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
                     Text(text = errorMessage!!, color = Color.Red, modifier = Modifier.padding(16.dp))
                 }
-            } else if (venues.isEmpty()) {
+            } else if (isLoading) {
                 Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
                     CircularProgressIndicator(color = Color(0xFFE51D53))
+                }
+            } else if (venues.isEmpty()) {
+                Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                    Text(
+                        text = "Nenhuma quadra cadastrada ainda.",
+                        color = Color.Gray,
+                        modifier = Modifier.padding(16.dp)
+                    )
                 }
             } else {
                 LazyColumn(
