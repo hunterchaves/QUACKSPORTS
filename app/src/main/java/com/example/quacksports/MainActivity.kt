@@ -24,6 +24,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
+import androidx.navigation.NavHostController
 import androidx.navigation.NavDestination.Companion.hierarchy
 import androidx.navigation.NavGraph.Companion.findStartDestination
 import androidx.navigation.compose.NavHost
@@ -77,6 +78,19 @@ sealed class Screen(val route: String, val label: String, val icon: ImageVector)
 
 val bottomNavItems = listOf(Screen.Explore, Screen.Favorites, Screen.Trips, Screen.Profile)
 
+/** Sends the user to their role landing and clears the auth stack behind them. */
+private fun routeByRole(navController: NavHostController, role: UserRole) {
+    val dest = when (role) {
+        UserRole.ADMIN -> "admin_dashboard"
+        UserRole.COMPANY -> "company_dashboard"
+        UserRole.USER -> Screen.Explore.route
+    }
+    navController.navigate(dest) {
+        popUpTo(0) { inclusive = true }
+        launchSingleTop = true
+    }
+}
+
 @Composable
 fun MainApp() {
     val navController = rememberNavController()
@@ -118,26 +132,21 @@ fun MainApp() {
             }
         }
     ) { innerPadding ->
+        val startDestination = if (authViewModel.isLoggedIn()) Screen.Explore.route else "login"
         NavHost(
             navController = navController,
-            startDestination = Screen.Explore.route,
+            startDestination = startDestination,
             modifier = Modifier.padding(innerPadding)
         ) {
             composable("login") {
                 LoginScreen(
-                    onLoginSuccess = {
-                        when (authViewModel.role) {
-                            UserRole.ADMIN -> navController.navigate("admin_dashboard") { popUpTo("login") { inclusive = true } }
-                            UserRole.COMPANY -> navController.navigate("company_dashboard") { popUpTo("login") { inclusive = true } }
-                            UserRole.USER -> navController.popBackStack()
-                        }
-                    },
+                    onLoginSuccess = { routeByRole(navController, authViewModel.role) },
                     onNavigateToRegister = { navController.navigate("register") }
                 )
             }
             composable("register") {
                 RegisterScreen(
-                    onRegisterSuccess = { navController.popBackStack("login", inclusive = true) },
+                    onRegisterSuccess = { routeByRole(navController, authViewModel.role) },
                     onBack = { navController.popBackStack() }
                 )
             }
@@ -157,7 +166,7 @@ fun MainApp() {
             composable(Screen.Trips.route) { ReservationsScreen(onBack = { navController.popBackStack() }) }
             composable(Screen.Profile.route) {
                 ProfileScreen(
-                    onLogout = { navController.navigate(Screen.Explore.route) { popUpTo(0) { inclusive = true } } },
+                    onLogout = { navController.navigate("login") { popUpTo(0) { inclusive = true } } },
                     onNavigateToReservations = { navController.navigate(Screen.Trips.route) },
                     onNavigateToAddresses = { navController.navigate("addresses") },
                     onNavigateToCards = { navController.navigate("cards") },
