@@ -1,25 +1,25 @@
 package com.example.quacksports.ui.viewmodel
 
+import android.app.Application
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.lifecycle.AndroidViewModel
-import android.app.Application
-import com.example.quacksports.util.SessionManager
+import androidx.lifecycle.viewModelScope
+import com.example.quacksports.data.repository.AuthRepository
 import com.example.quacksports.model.User
-import com.example.quacksports.util.FirebaseRealtimeDatabaseManager
-import com.google.firebase.auth.FirebaseAuth
+import com.example.quacksports.model.UserRole
 import com.google.firebase.auth.FacebookAuthProvider
+import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.auth.GoogleAuthProvider
+import kotlinx.coroutines.launch
 
 class AuthViewModel(application: Application) : AndroidViewModel(application) {
-    private val auth: FirebaseAuth = FirebaseAuth.getInstance()
-    private val database = FirebaseRealtimeDatabaseManager.getDatabaseInstance()
-    private val sessionManager = SessionManager(application)
+    private val repo = AuthRepository()
+    private val auth = FirebaseAuth.getInstance()
 
     var loginEmail by mutableStateOf("")
     var loginPassword by mutableStateOf("")
-
     var registerFirstName by mutableStateOf("")
     var registerLastName by mutableStateOf("")
     var registerEmail by mutableStateOf("")
@@ -27,164 +27,65 @@ class AuthViewModel(application: Application) : AndroidViewModel(application) {
 
     var isLoading by mutableStateOf(false)
     var errorMessage by mutableStateOf<String?>(null)
-    var isSuccess by mutableStateOf(false)
-
     var currentUserData by mutableStateOf<User?>(null)
 
-    init {
-        auth.currentUser?.let {
-            fetchUserData(it.uid)
-        }
-    }
+    val role: UserRole get() = UserRole.from(currentUserData?.role)
 
-    fun isLoggedIn(): Boolean = auth.currentUser != null
+    init { auth.currentUser?.uid?.let { uid -> viewModelScope.launch { currentUserData = repo.fetchUser(uid) } } }
+
+    fun isLoggedIn(): Boolean = repo.isLoggedIn()
 
     fun login(onSuccess: () -> Unit) {
-        if (loginEmail.isBlank() || loginPassword.isBlank()) {
-            errorMessage = "Por favor, preencha todos os campos"
-            return
+        if (loginEmail.isBlank() || loginPassword.isBlank()) { errorMessage = "Preencha todos os campos"; return }
+        isLoading = true; errorMessage = null
+        viewModelScope.launch {
+            try { currentUserData = repo.login(loginEmail, loginPassword); onSuccess() }
+            catch (e: Exception) { errorMessage = "Erro ao fazer login: ${e.message}" }
+            finally { isLoading = false }
         }
-
-        isLoading = true
-        errorMessage = null
-        
-        auth.signInWithEmailAndPassword(loginEmail, loginPassword)
-            .addOnCompleteListener { task ->
-                if (task.isSuccessful) {
-                    val uid = task.result?.user?.uid
-                    if (uid != null) {
-                        fetchUserData(uid)
-                    }
-                    isLoading = false
-                    isSuccess = true
-                    onSuccess()
-                } else {
-                    isLoading = false
-                    errorMessage = "Erro ao fazer login: ${task.exception?.message}"
-                }
-            }
     }
 
     fun register(onSuccess: () -> Unit) {
         if (registerEmail.isBlank() || registerPassword.isBlank() || registerFirstName.isBlank()) {
-            errorMessage = "Por favor, preencha todos os campos obrigatórios"
-            return
+            errorMessage = "Preencha os campos obrigatórios"; return
         }
-
-        isLoading = true
-        errorMessage = null
-
-        auth.createUserWithEmailAndPassword(registerEmail, registerPassword)
-            .addOnCompleteListener { task ->
-                if (task.isSuccessful) {
-                    val uid = task.result?.user?.uid
-                    if (uid != null) {
-                        saveUserToDatabase(uid, registerFirstName, registerLastName, registerEmail, onSuccess)
-                    } else {
-                        isLoading = false
-                        isSuccess = true
-                        onSuccess()
-                    }
-                } else {
-                    isLoading = false
-                    errorMessage = "Erro ao cadastrar: ${task.exception?.message}"
-                }
-            }
+        isLoading = true; errorMessage = null
+        viewModelScope.launch {
+            try { currentUserData = repo.register(registerFirstName, registerLastName, registerEmail, registerPassword); onSuccess() }
+            catch (e: Exception) { errorMessage = "Erro ao cadastrar: ${e.message}" }
+            finally { isLoading = false }
+        }
     }
 
-    private fun saveUserToDatabase(uid: String, firstName: String, lastName: String, email: String, onSuccess: () -> Unit) {
-        val user = User(id = uid, firstName = firstName, lastName = lastName, email = email)
-        database.getReference("users").child(uid).setValue(user)
-            .addOnCompleteListener { task ->
-                isLoading = false
-                if (task.isSuccessful) {
-                    currentUserData = user
-                    isSuccess = true
-                    onSuccess()
-                } else {
-                    errorMessage = "Erro ao salvar dados: ${task.exception?.message}"
-                }
-            }
+    fun signInWithGoogle(idToken: String, onSuccess: () -> Unit) =
+        socialSignIn(GoogleAuthProvider.getCredential(idToken, null), onSuccess)
+
+    fun signInWithFacebook(accessToken: String, onSuccess: () -> Unit) =
+        socialSignIn(FacebookAuthProvider.getCredential(accessToken), onSuccess)
+
+    private fun socialSignIn(credential: com.google.firebase.auth.AuthCredential, onSuccess: () -> Unit) {
+        isLoading = true; errorMessage = null
+        auth.signInWithCredential(credential).addOnCompleteListener { task ->
+            if (task.isSuccessful) {
+                val fu = task.result?.user
+                if (fu != null) viewModelScope.launch {
+                    try { currentUserData = repo.signInWithCredentialUser(fu.uid, fu.displayName ?: "", fu.email ?: "") }
+                    finally { isLoading = false; onSuccess() }
+                } else { isLoading = false; onSuccess() }
+            } else { isLoading = false; errorMessage = "Erro: ${task.exception?.message}" }
+        }
     }
 
-    private fun fetchUserData(uid: String) {
-        database.getReference("users").child(uid).get()
-            .addOnSuccessListener { snapshot ->
-                currentUserData = snapshot.getValue(User::class.java)
-            }
+    fun setRole(role: UserRole, companyId: String, onDone: () -> Unit) {
+        val uid = repo.currentUid() ?: return
+        viewModelScope.launch {
+            repo.setRole(uid, role.name, companyId)
+            currentUserData = repo.fetchUser(uid)
+            onDone()
+        }
     }
 
-    fun logout() {
-        auth.signOut()
-        currentUserData = null
-        sessionManager.logout()
-    }
+    fun refresh() { repo.currentUid()?.let { uid -> viewModelScope.launch { currentUserData = repo.fetchUser(uid) } } }
 
-    fun signInWithGoogle(idToken: String, onSuccess: () -> Unit) {
-        isLoading = true
-        errorMessage = null
-        val credential = GoogleAuthProvider.getCredential(idToken, null)
-        auth.signInWithCredential(credential)
-            .addOnCompleteListener { task ->
-                if (task.isSuccessful) {
-                    val firebaseUser = task.result?.user
-                    if (firebaseUser != null) {
-                        checkAndCreateUser(firebaseUser.uid, firebaseUser.displayName ?: "", "", firebaseUser.email ?: "", onSuccess)
-                    } else {
-                        isLoading = false
-                        isSuccess = true
-                        onSuccess()
-                    }
-                } else {
-                    isLoading = false
-                    errorMessage = "Erro Google: ${task.exception?.message}"
-                }
-            }
-    }
-
-    fun signInWithFacebook(accessToken: String, onSuccess: () -> Unit) {
-        isLoading = true
-        errorMessage = null
-        val credential = FacebookAuthProvider.getCredential(accessToken)
-        auth.signInWithCredential(credential)
-            .addOnCompleteListener { task ->
-                if (task.isSuccessful) {
-                    val firebaseUser = task.result?.user
-                    if (firebaseUser != null) {
-                        checkAndCreateUser(firebaseUser.uid, firebaseUser.displayName ?: "", "", firebaseUser.email ?: "", onSuccess)
-                    } else {
-                        isLoading = false
-                        isSuccess = true
-                        onSuccess()
-                    }
-                } else {
-                    isLoading = false
-                    errorMessage = "Erro Facebook: ${task.exception?.message}"
-                }
-            }
-    }
-
-    private fun checkAndCreateUser(uid: String, displayName: String, lastName: String, email: String, onSuccess: () -> Unit) {
-        database.getReference("users").child(uid).get()
-            .addOnSuccessListener { snapshot ->
-                if (snapshot.exists()) {
-                    currentUserData = snapshot.getValue(User::class.java)
-                    isLoading = false
-                    isSuccess = true
-                    onSuccess()
-                } else {
-                    // Create basic user entry
-                    val nameParts = displayName.split(" ", limit = 2)
-                    val first = nameParts.getOrNull(0) ?: displayName
-                    val last = nameParts.getOrNull(1) ?: ""
-                    saveUserToDatabase(uid, first, last, email, onSuccess)
-                }
-            }
-            .addOnFailureListener {
-                // If we can't check, just try to fetch anyway or continue
-                isLoading = false
-                isSuccess = true
-                onSuccess()
-            }
-    }
+    fun logout() { repo.logout(); currentUserData = null }
 }
