@@ -4,12 +4,11 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.ArrowBack
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.quacksports.ui.viewmodel.VenueViewModel
 import com.google.android.gms.maps.model.CameraPosition
@@ -24,11 +23,16 @@ fun MapScreen(
     viewModel: VenueViewModel = viewModel()
 ) {
     val venues by viewModel.venues.collectAsState()
-    
-    // Default position (São Paulo)
+
     val saopaulo = LatLng(-23.5505, -46.6333)
     val cameraPositionState = rememberCameraPositionState {
         position = CameraPosition.fromLatLngZoom(saopaulo, 10f)
+    }
+
+    LaunchedEffect(venues) {
+        venues.firstOrNull()?.let {
+            cameraPositionState.position = CameraPosition.fromLatLngZoom(LatLng(it.lat, it.lng), 11f)
+        }
     }
 
     Scaffold(
@@ -37,7 +41,7 @@ fun MapScreen(
                 title = { Text("Mapa de Quadras") },
                 navigationIcon = {
                     IconButton(onClick = onBack) {
-                        Icon(Icons.Default.ArrowBack, contentDescription = "Voltar")
+                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Voltar")
                     }
                 },
                 colors = TopAppBarDefaults.topAppBarColors(
@@ -51,16 +55,14 @@ fun MapScreen(
             GoogleMap(
                 modifier = Modifier.fillMaxSize(),
                 cameraPositionState = cameraPositionState,
-                properties = MapProperties(isMyLocationEnabled = false) // Permission handling would go here
+                properties = MapProperties(isMyLocationEnabled = false)
             ) {
                 venues.forEach { venue ->
                     Marker(
-                        state = MarkerState(position = LatLng(venue.latitude, venue.longitude)),
-                        title = venue.title,
-                        snippet = venue.price,
-                        onInfoWindowClick = {
-                            onNavigateToDetail(venue.id)
-                        }
+                        state = MarkerState(position = LatLng(venue.lat, venue.lng)),
+                        title = venue.name,
+                        snippet = "${venue.city}, ${venue.state}",
+                        onInfoWindowClick = { onNavigateToDetail(venue.id) }
                     )
                 }
             }
