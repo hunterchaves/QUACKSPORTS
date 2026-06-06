@@ -5,7 +5,7 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material3.* // Importa todos os componentes Material3
+import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
@@ -29,40 +29,29 @@ fun ReservationsScreen(
     val reservations by reservationViewModel.userReservations.collectAsState()
 
     LaunchedEffect(currentUser) {
-        currentUser?.uid?.let {
-            reservationViewModel.fetchUserReservations(it)
-        }
+        currentUser?.uid?.let { reservationViewModel.load(it) }
     }
 
     Scaffold(
         topBar = {
             TopAppBar(
                 title = { Text("Minhas Reservas") },
-                navigationIcon = {
-                    IconButton(onClick = onBack) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Voltar")
-                    }
-                },
-                colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = Color.White,
-                    titleContentColor = Color.Black
-                )
+                navigationIcon = { IconButton(onClick = onBack) { Icon(Icons.AutoMirrored.Filled.ArrowBack, "Voltar") } },
+                colors = TopAppBarDefaults.topAppBarColors(containerColor = Color.White, titleContentColor = Color.Black)
             )
         }
     ) { paddingValues ->
         if (currentUser == null) {
-            Box(modifier = Modifier.fillMaxSize().padding(paddingValues)) {
+            Box(Modifier.fillMaxSize().padding(paddingValues)) {
                 Text("Faça login para ver suas reservas.", modifier = Modifier.padding(16.dp))
             }
         } else if (reservations.isEmpty()) {
-            Box(modifier = Modifier.fillMaxSize().padding(paddingValues)) {
+            Box(Modifier.fillMaxSize().padding(paddingValues)) {
                 Text("Você não tem reservas ativas.", modifier = Modifier.padding(16.dp))
             }
         } else {
-            LazyColumn(modifier = Modifier.fillMaxSize().padding(paddingValues)) {
-            items(reservations, key = { it.id }) { reservation ->
-                ReservationItem(reservation = reservation)
-            }
+            LazyColumn(Modifier.fillMaxSize().padding(paddingValues)) {
+                items(reservations, key = { it.id }) { ReservationItem(it) }
             }
         }
     }
@@ -71,19 +60,15 @@ fun ReservationsScreen(
 @Composable
 fun ReservationItem(reservation: Reservation) {
     Card(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(8.dp),
+        modifier = Modifier.fillMaxWidth().padding(8.dp),
         elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
     ) {
-        Column(
-            modifier = Modifier.padding(16.dp)
-        ) {
-            Text(text = reservation.venueTitle, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
-            Spacer(modifier = Modifier.height(4.dp))
-            Text(text = "Data: ${reservation.date} ${reservation.time}", style = MaterialTheme.typography.bodyMedium)
-            Text(text = "Preço: ${reservation.price}", style = MaterialTheme.typography.bodyMedium)
-            Text(text = "Status: ${reservation.status}", style = MaterialTheme.typography.bodyMedium)
+        Column(Modifier.padding(16.dp)) {
+            Text("${reservation.venueName} — ${reservation.courtName}", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+            Spacer(Modifier.height(4.dp))
+            Text("Data: ${reservation.date}  %02d:00–%02d:00".format(reservation.startHour, reservation.endHour), style = MaterialTheme.typography.bodyMedium)
+            Text("Valor: R$ %.2f".format(reservation.amount), style = MaterialTheme.typography.bodyMedium)
+            Text("Status: ${reservation.status}", style = MaterialTheme.typography.bodyMedium)
         }
     }
 }
