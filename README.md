@@ -152,6 +152,8 @@ Clonar o repositório.
 Inserir chaves de API (Maps/Facebook) em res/values/strings.xml.
 3.
 Sincronizar Gradle e rodar via Android Studio.
+
+
 📋 Ficha Técnica
 1. Informações Gerais
 •
