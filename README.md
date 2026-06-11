@@ -3,6 +3,14 @@
 Plataforma moderna para reserva de quadras esportivas, conectando atletas e estabelecimentos de forma ágil e intuitiva.
 
 ---
+PARTICIPANTES 
+Camille Santos
+Emanuel Chaves
+Higor Rosa
+Victor Marcom
+Carlos Farias 
+Fernando Pereira 
+
 
 ## 🏗️ Desenvolvimento (5.0 pts)
 
@@ -144,3 +152,33 @@ Clonar o repositório.
 Inserir chaves de API (Maps/Facebook) em res/values/strings.xml.
 3.
 Sincronizar Gradle e rodar via Android Studio.
+📋 Ficha Técnica
+1. Informações Gerais
+•
+Nome: QUACK SPORTS
+•
+Versão: 1.0
+•
+Plataforma: Android (Nativo)
+2. Stack Tecnológica
+•
+Linguagem: Kotlin 2.2.10
+•
+UI: Jetpack Compose (Material Design 3)
+•
+Arquitetura: MVVM + Clean Architecture
+•
+Banco de Dados: Cloud Firestore
+•
+Autenticação: Firebase Auth & Facebook Login
+•
+Target SDK: 35 (Android 15)
+3. Funcionalidades
+•
+Busca e filtragem de quadras por esporte.
+•
+Localização via Google Maps.
+•
+Sistema de reservas com horários em tempo real.
+•
+Dashboards específicos para Usuários, Empresas e Admin.
