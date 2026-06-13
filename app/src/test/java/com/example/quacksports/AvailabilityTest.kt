@@ -25,4 +25,23 @@ class AvailabilityTest {
         val slots = Availability.slotsFor(8, 10, listOf(res(8, 9, status = "CANCELLED")))
         assertEquals(true, slots.first { it.hour == 8 }.available)
     }
+
+    @Test fun single_reservation_spanning_multiple_hours_blocks_each_hour() {
+        val slots = Availability.slotsFor(8, 13, listOf(res(9, 12)))
+        assertEquals(mapOf(8 to true, 9 to false, 10 to false, 11 to false, 12 to true),
+            slots.associate { it.hour to it.available })
+    }
+
+    @Test fun open_equal_to_close_yields_no_slots() {
+        assertEquals(emptyList<Int>(), Availability.slotsFor(8, 8, emptyList()).map { it.hour })
+    }
+
+    @Test fun open_after_close_yields_no_slots() {
+        assertEquals(emptyList<Int>(), Availability.slotsFor(12, 8, emptyList()).map { it.hour })
+    }
+
+    @Test fun non_confirmed_status_does_not_block() {
+        val slots = Availability.slotsFor(8, 10, listOf(res(8, 9, status = "PENDING")))
+        assertEquals(true, slots.first { it.hour == 8 }.available)
+    }
 }

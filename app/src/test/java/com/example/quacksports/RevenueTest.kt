@@ -25,4 +25,20 @@ class RevenueTest {
         )
         assertEquals(mapOf("a" to 100.0, "b" to 30.0), Revenue.perCompany(reservations))
     }
+
+    @Test fun total_of_empty_list_is_zero() {
+        assertEquals(0.0, Revenue.total(emptyList()), 0.001)
+    }
+
+    @Test fun total_with_no_approved_payments_is_zero() {
+        val none = listOf(
+            Payment(id = "p1", amount = 100.0, status = "FAILED"),
+            Payment(id = "p2", amount = 50.0, status = "PENDING")
+        )
+        assertEquals(0.0, Revenue.total(none), 0.001)
+    }
+
+    @Test fun perCompany_of_empty_list_is_empty_map() {
+        assertEquals(emptyMap<String, Double>(), Revenue.perCompany(emptyList()))
+    }
 }
