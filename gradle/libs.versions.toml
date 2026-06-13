@@ -21,6 +21,8 @@ mapsCompose = "4.4.1"
 playServicesMaps = "19.0.0"
 playServicesLocation = "21.3.0"
 coroutinesPlayServices = "1.8.1"
+coroutinesTest = "1.8.1"
+mockitoKotlin = "5.4.0"
 
 [libraries]
 google-maps-compose = { group = "com.google.maps.android", name = "maps-compose", version.ref = "mapsCompose" }
@@ -55,6 +57,8 @@ firebase-database = { group = "com.google.firebase", name = "firebase-database" 
 firebase-firestore = { group = "com.google.firebase", name = "firebase-firestore" }
 firebase-analytics = { group = "com.google.firebase", name = "firebase-analytics" }
 kotlinx-coroutines-play-services = { group = "org.jetbrains.kotlinx", name = "kotlinx-coroutines-play-services", version.ref = "coroutinesPlayServices" }
+kotlinx-coroutines-test = { group = "org.jetbrains.kotlinx", name = "kotlinx-coroutines-test", version.ref = "coroutinesTest" }
+mockito-kotlin = { group = "org.mockito.kotlin", name = "mockito-kotlin", version.ref = "mockitoKotlin" }
 play-services-auth = { group = "com.google.android.gms", name = "play-services-auth", version.ref = "playServicesAuth" }
 facebook-login = { group = "com.facebook.android", name = "facebook-login", version.ref = "facebookLogin" }
 
