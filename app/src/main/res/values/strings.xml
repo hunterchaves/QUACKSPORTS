@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">QUACKSPORTS</string>
+    <string name="facebook_app_id">coloque_seu_app_id_aqui</string>
+    <string name="facebook_client_token">coloque_seu_client_token_aqui</string>
+    <string name="fb_login_protocol_scheme">fb_coloque_seu_app_id_aqui</string>
+    <string name="arena_name">Nome da Arena</string>
+    <string name="arena_price">A partir de R$ 80,00</string>
+    <string name="reserve_now">Reservar agora</string>
+    <string name="google_maps_key">AIzaSyCgXvfT7t956P4zNAzl9Ip8KfOnl_TDF10</string>
+</resources>

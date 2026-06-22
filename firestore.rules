@@ -1,0 +1,104 @@
+rules_version = '2';
+
+// QUACKSPORTS Firestore security rules — role-based (USER / COMPANY / ADMIN).
+// Publish: Firebase console -> Firestore Database -> Rules -> paste -> Publish.
+// (Or `firebase deploy --only firestore:rules` if you use the Firebase CLI.)
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // ---------- helpers ----------
+    function isSignedIn() {
+      return request.auth != null;
+    }
+    function uid() {
+      return request.auth.uid;
+    }
+    function userDoc() {
+      return get(/databases/$(database)/documents/users/$(uid())).data;
+    }
+    function hasRole(role) {
+      return isSignedIn()
+        && exists(/databases/$(database)/documents/users/$(uid()))
+        && userDoc().role == role;
+    }
+    function isAdmin() {
+      return hasRole('ADMIN');
+    }
+    // Master-admin email allowlist — keep in sync with AuthRepository.ADMIN_EMAILS.
+    function isAdminEmail() {
+      return isSignedIn()
+        && request.auth.token.email in ['emanuelchaves199@gmail.com'];
+    }
+    function isCompany() {
+      return hasRole('COMPANY');
+    }
+
+    // ---------- users (+ addresses, cards) ----------
+    match /users/{userId} {
+      // Own doc, or any admin, may read.
+      allow read: if isSignedIn() && (uid() == userId || isAdmin() || isAdminEmail());
+
+      // Create your own doc. The ADMIN role can only be self-assigned by an
+      // allowlisted email; everyone else must create as USER/COMPANY.
+      allow create: if (uid() == userId
+        && (request.resource.data.role != 'ADMIN' || isAdminEmail()))
+        || isAdmin() || isAdminEmail();
+
+      // Update your own doc (no self-promotion to ADMIN unless allowlisted),
+      // or any admin may edit.
+      allow update: if (uid() == userId
+                        && (request.resource.data.role != 'ADMIN' || isAdminEmail()))
+                    || isAdmin() || isAdminEmail();
+
+      allow delete: if isAdmin();
+
+      match /addresses/{addressId} {
+        allow read, write: if uid() == userId;
+      }
+      match /cards/{cardId} {
+        allow read, write: if uid() == userId;
+      }
+    }
+
+    // ---------- companies ----------
+    match /companies/{companyId} {
+      // Any signed-in user can browse the catalog of companies.
+      allow read: if isSignedIn();
+      // Admins seed/manage companies; a COMPANY user may claim/own a company.
+      allow write: if isAdmin() || isAdminEmail()
+                   || (isCompany() && (
+                        request.resource.data.ownerUid == uid()
+                        || resource.data.ownerUid == uid()
+                      ));
+    }
+
+    // ---------- venues (+ courts) ----------
+    match /venues/{venueId} {
+      allow read: if isSignedIn();
+      allow write: if isAdmin() || isAdminEmail() || isCompany();
+
+      match /courts/{courtId} {
+        allow read: if isSignedIn();
+        allow write: if isAdmin() || isAdminEmail() || isCompany();
+      }
+    }
+
+    // ---------- reservations ----------
+    // Readable by any signed-in user (needed to compute court availability for a
+    // given date). A user can only create reservations for themselves.
+    match /reservations/{reservationId} {
+      allow read: if isSignedIn();
+      allow create: if isSignedIn() && request.resource.data.userId == uid();
+      allow update, delete: if isAdmin()
+                            || (isSignedIn() && resource.data.userId == uid());
+    }
+
+    // ---------- payments ----------
+    match /payments/{paymentId} {
+      allow read: if isSignedIn() && (resource.data.userId == uid() || isAdmin() || isAdminEmail());
+      allow create: if isSignedIn() && request.resource.data.userId == uid();
+      allow update: if isSignedIn() && (resource.data.userId == uid() || isAdmin());
+    }
+  }
+}

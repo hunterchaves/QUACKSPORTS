@@ -1,0 +1,30 @@
+{
+  "project_info": {
+    "project_number": "359623127969",
+    "project_id": "quack-77b17",
+    "storage_bucket": "quack-77b17.firebasestorage.app",
+    "firebase_url": "https://quack-77b17-default-rtdb.firebaseio.com/"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:359623127969:android:1d6a36b87d57bbcd9091e0",
+        "android_client_info": {
+          "package_name": "com.example.quacksports"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyCkpmB8P8ldmS-k7V3LM_mOUCNvSJZvPqo"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
